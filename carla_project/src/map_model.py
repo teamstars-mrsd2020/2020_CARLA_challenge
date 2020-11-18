@@ -16,7 +16,7 @@ from .models import SegmentationModel, RawController
 from .utils.heatmap import ToHeatmap
 from .dataset import get_dataset
 from . import common
-
+# setattr(WandbLogger, 'name', property(lambda self: self._name))
 
 @torch.no_grad()
 def visualize(batch, out, between, out_cmd, loss_point, loss_cmd, target_heatmap):
@@ -145,16 +145,16 @@ class MapModel(pl.LightningModule):
                 }, self.global_step)
 
         return {
-                'val_loss': loss.item(),
-                'val_point_loss': loss_point.mean().item(),
+                'val_loss': loss,
+                'val_point_loss': loss_point.mean(),
 
-                'val_cmd_loss': loss_cmd_raw.mean(1).mean().item(),
-                'val_steer_loss': loss_cmd_raw[:, 0].mean().item(),
-                'val_speed_loss': loss_cmd_raw[:, 1].mean().item(),
+                'val_cmd_loss': loss_cmd_raw.mean(1).mean(),
+                'val_steer_loss': loss_cmd_raw[:, 0].mean(),
+                'val_speed_loss': loss_cmd_raw[:, 1].mean(),
 
-                'val_cmd_pred_loss': loss_cmd_pred_raw.mean(1).mean().item(),
-                'val_steer_pred_loss': loss_cmd_pred_raw[:, 0].mean().item(),
-                'val_speed_pred_loss': loss_cmd_pred_raw[:, 1].mean().item(),
+                'val_cmd_pred_loss': loss_cmd_pred_raw.mean(1).mean(),
+                'val_steer_pred_loss': loss_cmd_pred_raw[:, 0].mean(),
+                'val_speed_pred_loss': loss_cmd_pred_raw[:, 1].mean(),
                 }
 
     def validation_epoch_end(self, batch_metrics):
@@ -166,8 +166,11 @@ class MapModel(pl.LightningModule):
                     results[key] = list()
 
                 results[key].append(metrics[key])
-
-        summary = {key: np.mean(val) for key, val in results.items()}
+        # breakpoint()
+        def unroll_val(val):
+            # since values are arrays in the case of multi gpu training
+            return np.array([r.mean().item() for r in val])
+        summary = {key: np.mean(unroll_val(val)) for key, val in results.items()}
         self.logger.log_metrics(summary, self.global_step)
 
         return summary
@@ -200,7 +203,7 @@ def main(hparams):
         resume_from_checkpoint = None
 
     trainer = pl.Trainer(
-            gpus=-1, max_epochs=hparams.max_epochs,
+            gpus=[0,1,2], max_epochs=hparams.max_epochs,
             resume_from_checkpoint=resume_from_checkpoint,
             logger=logger, checkpoint_callback=checkpoint_callback)
 
@@ -223,7 +226,7 @@ if __name__ == '__main__':
 
     # Data args.
     parser.add_argument('--dataset_dir', type=pathlib.Path, required=True)
-    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--batch_size', type=int, default=32*3)
 
     # Optimizer args.
     parser.add_argument('--lr', type=float, default=1e-4)

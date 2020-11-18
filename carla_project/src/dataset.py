@@ -206,18 +206,19 @@ class CarlaDataset(Dataset):
         target = np.clip(target, 0, 256)
         target = torch.FloatTensor(target)
 
-        # heatmap = make_heatmap((256, 256), target)
-        # heatmap = torch.FloatTensor(heatmap).unsqueeze(0)
+        heatmap = make_heatmap((256, 256), target)
+        heatmap = torch.FloatTensor(heatmap).unsqueeze(0)
 
-        # command_img = self.converter.map_to_cam(torch.FloatTensor(target))
-        # heatmap_img = make_heatmap((144, 256), command_img)
-        # heatmap_img = torch.FloatTensor(heatmap_img).unsqueeze(0)
+        command_img = self.converter.map_to_cam(torch.FloatTensor(target))
+        heatmap_img = make_heatmap((144, 256), command_img)
+        heatmap_img = torch.FloatTensor(heatmap_img).unsqueeze(0)
 
-        actions = np.float32(self.measurements.iloc[i][['steer', 'target_speed']])
-        actions[np.isnan(actions)] = 0.0
-        actions = torch.FloatTensor(actions)
+        # actions = np.float32(self.measurements.iloc[i][['steer', 'target_speed']])
+        # actions[np.isnan(actions)] = 0.0
+        # actions = torch.FloatTensor(actions)
 
-        return torch.cat((rgb, rgb_left, rgb_right)), topdown, points, target, actions, meta
+        # return torch.cat((rgb, rgb_left, rgb_right)), topdown, points, target, actions, meta
+        return torch.cat((rgb, rgb_left, rgb_right)), topdown, points, heatmap, heatmap_img, meta, target
 
 
 if __name__ == '__main__':
